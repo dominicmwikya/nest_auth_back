@@ -1,9 +1,16 @@
+import { Global, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { Module , Global} from "@nestjs/common";
-import {Product} from '../Entities/Product';
+import { BatchNumbers } from "src/Entities/BatchNumbers.Entity";
+import { Profile } from "src/Entities/Profile.entity";
+import { Role } from "src/Entities/Role.entity";
+import { Supplier } from "src/Entities/Supplier.entity";
+import { UserEntity } from "src/Entities/User.entity";
+import { Purchases } from "src/Entities/purchases.entity";
+import { Sale } from "src/Entities/sales.entity";
+import { Product } from '../Entities/Product.entity';
 @Global()
 @Module({
-    imports:[
+    imports: [
         TypeOrmModule.forRoot({
             type: 'mysql',
             host: 'localhost',
@@ -11,9 +18,9 @@ import {Product} from '../Entities/Product';
             username: 'root',
             password: '@Devtech@21',
             database: 'nest_js',
-            entities: [Product],
+            entities: [Product, UserEntity, Purchases, Sale, Supplier, Profile, BatchNumbers, Role],
             synchronize: true,
         })
     ]
 })
-export class DatabaseConnection{}
+export class DatabaseConnection { }
