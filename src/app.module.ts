@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import * as path from 'path';
 import { Product } from './Entities/Product.entity';
 import { Profile } from './Entities/Profile.entity';
 import { Purchases } from './Entities/Purchases.entity';
@@ -28,10 +27,6 @@ import { UsersModule } from './Modules/Users/UsersModule';
     ConfigModule.forRoot(),
     TypeOrmModule.forRootAsync({
       useFactory: () => {
-        const entitiesPath = path.join(__dirname, '..', '..', 'src', 'Entities', '*.entity.ts');
-        // const entitiesPath = path.join(__dirname, '..', 'Entities', '*.entity{.ts}');
-
-        console.log('Entities Path:', entitiesPath); // Print the path
         return {
           type: 'mysql',
           host: process.env.DB_HOST,
