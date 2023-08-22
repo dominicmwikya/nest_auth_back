@@ -1,8 +1,8 @@
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { format } from 'date-fns';
-import { BatchNumbers } from "src/Entities/BatchNumbers.Entity";
 import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { format } from 'date-fns';
+import { BatchNumbers } from "src/Entities/BatchNumbers.entity";
+import { Repository } from "typeorm";
 @Injectable()
 export class BatchService {
     constructor(@InjectRepository(BatchNumbers) private batchRepository: Repository<BatchNumbers>) { }

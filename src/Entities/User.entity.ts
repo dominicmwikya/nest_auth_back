@@ -1,11 +1,12 @@
-import { Entity, Column, PrimaryGeneratedColumn, JoinColumn, OneToOne, ManyToMany, JoinTable, OneToMany } from 'typeorm';
-import { Profile } from './Profile.entity';
-import { Role } from './Role.entity';
+import { BaseEntity, Column, Entity, JoinColumn, JoinTable, ManyToMany, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Product } from './Product.entity';
-import { Purchases } from './purchases.entity';
+import { Profile } from './Profile.entity';
+import { Purchases } from './Purchases.entity';
+import { Role } from './Role.entity';
+import { Sale } from './sales.entity';
 
 @Entity()
-export class UserEntity {
+export class UserEntity extends BaseEntity {
   @PrimaryGeneratedColumn()
   id!: number;
 
@@ -38,6 +39,8 @@ export class UserEntity {
 
   @OneToMany(() => Purchases, purchase => purchase.user)
   purchases!: Purchases[];
+  @OneToMany(() => Sale, sales => sales.user)
+  sales!: Sale[];
 
 
   // Define the many-to-many relationship with the roles table

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinColumn, JoinTable } from "typeorm"
+import { BaseEntity, Column, Entity, ManyToMany, PrimaryGeneratedColumn } from "typeorm"
 import { UserEntity } from "./User.entity"
 export enum UserRole {
     ADMIN = "admin",
@@ -6,7 +6,7 @@ export enum UserRole {
     NORMAL = "normal",
 }
 @Entity()
-export class Role {
+export class Role extends BaseEntity {
     @PrimaryGeneratedColumn()
     id!: number
 
@@ -16,8 +16,8 @@ export class Role {
         default: UserRole.NORMAL,
     })
     role!: UserRole
-     // Define the many-to-many relationship with the users table
-  @ManyToMany(() => UserEntity, user => user.roles)
+    // Define the many-to-many relationship with the users table
+    @ManyToMany(() => UserEntity, user => user.roles)
     users!: UserEntity[]
-    
+
 }

@@ -1,11 +1,11 @@
 import { Global, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { BatchNumbers } from "src/Entities/BatchNumbers.Entity";
+import { BatchNumbers } from "src/Entities/BatchNumbers.entity";
 import { Profile } from "src/Entities/Profile.entity";
+import { Purchases } from "src/Entities/Purchases.entity";
 import { Role } from "src/Entities/Role.entity";
 import { Supplier } from "src/Entities/Supplier.entity";
 import { UserEntity } from "src/Entities/User.entity";
-import { Purchases } from "src/Entities/purchases.entity";
 import { Sale } from "src/Entities/sales.entity";
 import { Product } from '../Entities/Product.entity';
 @Global()

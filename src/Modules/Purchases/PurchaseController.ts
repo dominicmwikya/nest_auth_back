@@ -1,6 +1,6 @@
 
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Put } from '@nestjs/common';
-import { Purchases } from 'src/Entities/purchases.entity';
+import { Purchases } from 'src/Entities/Purchases.entity';
 import { ProductService } from '../Products/ProductService';
 import { UsersService } from '../Users/UserService';
 import { purchaseBodyData } from './CreatePurchase.DTO';
@@ -16,15 +16,8 @@ export class PurchaseController {
 	@Get()
 	async getPurchases() {
 		try {
-			const response = await fetch('http://localhost:5000/purchases'); // Replace with your endpoint URL
-			const data = await response.json();
-
-			if (Array.isArray(data)) {
-				return data;
-			} else {
-				console.error('Data received is not an array:', data);
-				throw new Error('Invalid data format');
-			}
+			const response = await this.purchaseService.getPurchases();
+			return response;
 		} catch (error) {
 			throw error;
 		}
@@ -36,7 +29,7 @@ export class PurchaseController {
 		const savedPurchases: Purchases[] = [];
 		try {
 			for (const purchase of purchaseData) {
-				const product = await this.productService.productById(1);
+				const product = await this.productService.productById(purchase.productId);
 				if (!product) {
 					throw new HttpException({ error: 'Product not found' }, HttpStatus.NOT_FOUND);
 				}
@@ -45,46 +38,12 @@ export class PurchaseController {
 				savedPurchases.push(Result);
 			}
 			return {
-				data: savedPurchases,
 				message: `${savedPurchases.length} records added successfully`
 			};
 		} catch (error: any) {
 			throw error;
 		}
 	}
-
-	// @Get('/all')
-	// async getProductPurchases(req: Request, res: Response) {
-	// 	const { sortBy, orderBy, searchValue, searchColumn, take, skip } = req.query;
-	// 	const searchCol = searchColumn as string;
-	// 	try {
-	// 		let whereClause = {};
-	// 		if (searchColumn && searchValue) {
-	// 			whereClause = { [searchCol]: Like(`%${searchValue}%`) };
-	// 		}
-	// 		const options: PaginationOptions = {
-	// 			take: Number(take) || 10,
-	// 			skip: Number(skip) || 0,
-	// 			order: {
-	// 				createdAt: 'DESC',
-	// 			},
-	// 			relations: [
-	// 				'user',
-	// 				'product',
-	// 				'supplier'
-	// 			],
-	// 			where: whereClause
-	// 		};
-
-	// 		const result = await this.purchaseService.getPurchases(options);
-	// 		return {
-	// 			data: result,
-	// 			HttpStatus: HttpStatus.OK
-	// 		};
-	// 	} catch (error) {
-	// 		throw error;
-	// 	}
-	// }
 
 	@Put('/update/:id')
 	async updatePurchase(@Param('id') id: number, @Body() data: Purchases) {
@@ -114,8 +73,40 @@ export class PurchaseController {
 		}
 	}
 
+	@Delete('/delete-multiple')
+	async deleteMultiplePurchases(@Body() body: { ids: number[] }) {
+		const results = await Promise.all(
+			body.ids.map(async id => {
+				const purchase = await this.purchaseService.findOne(id);
+				const product = purchase.product;
+				product.qty -= purchase.purchase_Qty;
+				const productUpdate = await this.productService.updateProduc1(product.id, product.qty);
+
+				if (productUpdate.message) {
+					const result = await this.purchaseService.deletePurchase(id);
+					return {
+						id,
+						result,
+						message: `Purchase id ${id} deleted ${result ? 'successfully' : 'unsuccessfully'}`,
+					};
+				}
+				else {
+					return {
+						id,
+						error: ` ${productUpdate.error}`
+					}
+				}
+			}));
+		return results;
+	}
+
 	@Get('/search/:searchParam')
 	async findProductByName(@Param('searchParam') searchParam: any) {
 		return await this.purchaseService.filterByBatch(searchParam);
+	}
+
+	@Get('/:id')
+	async findById(@Param('id') purchaseId: number) {
+		return await this.purchaseService.findOne(purchaseId)
 	}
 }

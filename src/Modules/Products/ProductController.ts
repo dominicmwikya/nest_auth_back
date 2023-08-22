@@ -1,5 +1,5 @@
 
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, ParseIntPipe, Post, Put, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Product } from 'src/Entities/Product.entity';
 import { AuthGuard } from '../Auth/authGuard';
 import { ProductService } from './ProductService';
@@ -18,9 +18,11 @@ export class ProductController {
 	}
 
 	@UseGuards(AuthGuard)
+	@UsePipes(new ValidationPipe())
 	@Post('/create')
-	async create(@Body() product: createProductDTO) {
+	async create(@Body(new ParseIntPipe()) product: createProductDTO) {
 		try {
+			// const productExists = await this.productService.findOne()
 			await this.productService.createProduct(product);
 			return { message: 'Product created successfully' };
 		} catch (error) {

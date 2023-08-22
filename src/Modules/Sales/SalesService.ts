@@ -1,37 +1,91 @@
-import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
-import { Sale } from "src/Entities/sales.entity";
-import { Repository } from "typeorm";
-import { Product } from "src/Entities/Product.entity";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { PaginationOptions } from "src/helpers/paginationOptions";
-import { PaginationData } from "src/helpers/paginationOptions";
+import { Sale } from "src/Entities/sales.entity";
 import { Pagination } from "src/helpers/Pagination";
+import { PaginationData, PaginationOptions } from "src/helpers/paginationOptions";
+import { Repository } from "typeorm";
 import { ProductService } from "../Products/ProductService";
+import { PurchaseService } from "../Purchases/PurchaseService";
 @Injectable()
 export class SaleService {
     constructor(@InjectRepository(Sale)
     private salesRepository: Repository<Sale>,
-        private productService: ProductService
+        private productService: ProductService,
+        private purchaseService: PurchaseService
     ) { }
-    async createSale(customer_name: string, quantity: number,
-        price: number, subTotal: number, sell_date: Date,
-        payment_mode: string, id: Product) {
+    async createSale(data: any) {
         try {
-            const newSale = this.salesRepository.create({
-                customer_name: customer_name,
-                quantity: quantity,
-                price: price,
-                subTotal: subTotal,
-                sell_date: sell_date,
-                payment_mode: payment_mode,
-                products: id
-            })
-            return await this.salesRepository.save(newSale);
+            const { customer_name, userId, productId, price, total, quantity, amount, balance, editId } = data;
+
+            const productExists = await this.productService.productById(productId);
+
+            if (!productExists) {
+                throw new HttpException(`Product with ID ${productId} not found`, HttpStatus.NOT_FOUND);
+            }
+
+            if (quantity <= productExists.qty) {
+                const purchaseExists = await this.purchaseService.findOne(editId);
+                const purchaseBalance = purchaseExists.purchase_Qty - purchaseExists.soldQty;
+
+                if (purchaseExists.purchase_Qty === purchaseExists.soldQty || quantity > purchaseBalance) {
+                    return { error: `Not enough quantity for ${productExists.name}` };
+                } else {
+                    const newSale = this.salesRepository.create({
+                        customer_name: customer_name,
+                        price: price,
+                        total: total,
+                        quantity: quantity,
+                        amount: amount,
+                        balance: balance,
+                        user: userId,
+                        products: productId
+                    });
+
+                    await this.salesRepository.save(newSale);
+
+                    const newProductQty = Number(productExists.qty) - Number(quantity);
+                    productExists.qty = newProductQty;
+
+                    const result = await this.productService.updateProduc1(productId, productExists.qty);
+
+                    if (result.message) {
+                        const purchaseQtySold = Number(purchaseExists.soldQty) + Number(quantity);
+                        purchaseExists.soldQty = purchaseQtySold;
+
+                        const response = await this.purchaseService.updatePurchase1(editId, purchaseExists.soldQty);
+
+                        if (typeof response === 'number') {
+                            return {
+                                status: HttpStatus.ACCEPTED,
+                                message: 'Sale record created successfully'
+                            };
+                        } else if (typeof result === 'string') {
+                            return {
+                                error: result
+                            };
+                        } else {
+                            throw new HttpException('Error occurred when updating purchases', HttpStatus.INTERNAL_SERVER_ERROR);
+                        }
+                    } else {
+                        return {
+                            error: result.error
+                        };
+                    }
+                }
+            } else {
+                return {
+                    error: `Insufficient quantity of product: ${productExists.name}`
+                };
+            }
         } catch (error) {
-            throw new HttpException({ error: `${error} error creating sale record` }, HttpStatus.INTERNAL_SERVER_ERROR)
+            console.error('Failed to create sales:', error);
+            throw new HttpException('Error creating sale record', HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
+    async getSales() {
+        return await this.salesRepository.find();
+    }
     async fetchSales(options: PaginationOptions): Promise<PaginationData<Sale>> {
         const Result = await Pagination(this.salesRepository, options);
         return Result;

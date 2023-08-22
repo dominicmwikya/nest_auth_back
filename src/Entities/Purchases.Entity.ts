@@ -1,9 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Supplier } from './Supplier.entity';
+import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Product } from './Product.entity';
+import { Supplier } from './Supplier.entity';
 import { UserEntity } from './User.entity';
+import { Sale } from './sales.entity';
 @Entity()
-export class Purchases {
+export class Purchases extends BaseEntity {
 	@PrimaryGeneratedColumn()
 	id!: number;
 
@@ -16,6 +17,10 @@ export class Purchases {
 
 	@ManyToOne(() => UserEntity, user => user.purchases)
 	user!: UserEntity;
+
+	@ManyToOne(() => Sale, sale => sale.purchases)
+	@JoinColumn()
+	sale!: Sale;
 
 	@Column({ type: 'int' })
 	purchase_Qty!: number;

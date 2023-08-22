@@ -1,8 +1,8 @@
-import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
-import { createProductDTO } from "./createProductDTO";
-import { Repository } from "typeorm";
-import { Product } from "src/Entities/Product.entity";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { Product } from "src/Entities/Product.entity";
+import { Repository } from "typeorm";
+import { createProductDTO } from "./createProductDTO";
 @Injectable()
 export class ProductService {
 	constructor(@InjectRepository(Product) private productRepository: Repository<Product>,
@@ -43,13 +43,37 @@ export class ProductService {
 		}
 	}
 
-	async updateProduct(id: number, data: Product) {
+	async updateProduc1(productId: number, newQty: number) {
+		try {
+			// Fetch the product from the database
+			const productToUpdate = await this.productRepository.findOne({ where: { id: productId } });
+
+			if (productToUpdate) {
+				// Update the product's quantity
+				productToUpdate.qty = newQty;
+
+				// Save the updated product to the database
+				await this.productRepository.save(productToUpdate);
+
+				return { message: 'Product updated successfully' };
+			} else {
+				return { error: 'Product not found' };
+			}
+		} catch (error) {
+			return {
+				error: `Error occured while updating item id ${productId}`
+			}
+		}
+	}
+
+
+	async updateProduct(id: number, data: any) {
 		const product = await this.productRepository.findOne({ where: { id: id } });
 		if (!product) {
 			throw new HttpException({ error: `product ${id} does not exist in the database` }, HttpStatus.NOT_FOUND)
 		}
 		try {
-			const { name, category, qty, min_qty,sku } = data;
+			const { name, category, qty, min_qty, sku } = data;
 			return this.productRepository.update({ id: product.id }, { name, category, qty, min_qty, sku });
 		} catch (error) {
 			throw new HttpException({ error: `${error} Error occured while Updating product! Try again` }, HttpStatus.INTERNAL_SERVER_ERROR)
@@ -58,14 +82,22 @@ export class ProductService {
 
 	async deleteProduct(id: number): Promise<boolean> {
 		try {
-			const result = await this.productRepository.update({ id: id }, { flag: 1 });
+			const product = await this.findOne(id);
+			const result = await this.productRepository.update({ id: product.id }, { flag: 1 });
 			return result.affected !== 0;
 		} catch (error: any) {
 			throw new HttpException(`Failed to update product: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
-	async productById<T>(id: T) {
-		return await this.productRepository.findOne({ where: id });
+	async productById(id: number) {
+		return await this.productRepository.findOne({ where: { id: id } });
+	}
+
+	async findOne(id: number) {
+		return await this.productRepository.findOne({
+			where: { id: id, flag: 0 },
+			relations: ['purchases', 'sales']
+		});
 	}
 }

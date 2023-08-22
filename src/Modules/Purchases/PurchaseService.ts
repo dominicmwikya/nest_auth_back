@@ -1,8 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Product } from "src/Entities/Product.entity";
+import { Purchases } from "src/Entities/Purchases.entity";
 import { UserEntity } from "src/Entities/User.entity";
-import { Purchases } from "src/Entities/purchases.entity";
 import { ILike, Repository } from "typeorm";
 import { BatchService } from "../Batchs/BatchService";
 @Injectable()
@@ -39,6 +39,7 @@ export class PurchaseService {
 	async getPurchases() {
 		try {
 			return await this.purchaseRepository.find({
+				where: { flag: 0 },
 				relations: ['user', 'product', 'supplier'],
 			});
 		} catch (error) {
@@ -46,17 +47,36 @@ export class PurchaseService {
 				HttpStatus.INTERNAL_SERVER_ERROR)
 		}
 	}
-	// getPurchases = async (options: PaginationOptions): Promise<PaginationData<Purchases>> => {
-	// 	try {
-	// 		const result = await Pagination(this.purchaseRepository, options);
-	// 		return result;
-	// 	} catch (error) {
-	// 		throw new HttpException({ error: `${error} error occured while fetching purchases` },
-	// 			HttpStatus.INTERNAL_SERVER_ERROR)
-	// 	}
-	// }
 
-	async updatePurchase(pId: number, data: Purchases) {
+	async updatePurchase1(pId: number, soldQty: any) {
+		try {
+			const purchase = await this.findOne(pId);
+
+			if (!purchase) {
+				throw new HttpException(`Purchase with ID ${pId} not found`, HttpStatus.NOT_FOUND);
+			}
+
+			const result = await this.purchaseRepository.update(
+				{ id: pId },
+				{ soldQty: soldQty }
+			);
+
+			if (result.affected === 1) {
+				return 1;
+			} else {
+				throw new HttpException('Error updating purchase', HttpStatus.INTERNAL_SERVER_ERROR);
+			}
+		} catch (error) {
+			if (error instanceof HttpException) {
+				return { error: `${error}` }
+			} else {
+				throw new HttpException('An error occurred', HttpStatus.INTERNAL_SERVER_ERROR);
+			}
+		}
+	}
+
+
+	async updatePurchase(pId: number, data: any) {
 		const purchase = await this.findOne(pId);
 		if (purchase instanceof HttpException) {
 			throw purchase;
@@ -68,13 +88,15 @@ export class PurchaseService {
 		return result;
 	}
 
-	async deletePurchase<T>(id: T): Promise<boolean> {
+	async deletePurchase(id: number): Promise<boolean> {
 		try {
-			const update = await this.findOne({ where: id });
+			const update = await this.findOne(id);
 			if (update instanceof HttpException) {
 				throw update;
 			}
 			const response = await this.purchaseRepository.update({ id: update.id }, { flag: 1 });
+
+			console.log(response)
 			return response.affected !== 0;
 		} catch (error) {
 			throw new HttpException(`Failed to update product: ${error.message}`,
@@ -82,48 +104,13 @@ export class PurchaseService {
 		}
 	}
 
-	async findOne<T>(id: T) {
-		const update = await this.purchaseRepository.findOne({ where: id });
+	async findOne(id: number) {
+		const update = await this.purchaseRepository.findOne({ where: { id: id }, relations: ['product'] });
 		if (!update) {
 			throw new HttpException({ error: `purchase ${id} Not Found` }, HttpStatus.NOT_FOUND)
 		}
 		return update;
 	}
-
-	// async filterByBatch(searchParam: string) {
-	// 	const response = await this.fetchFilterData(searchParam);
-
-	// 	if (!response) {
-	// 		throw new HttpException({ error: `Error occurred while updating qty` },
-	// 			HttpStatus.NOT_FOUND);
-	// 	}
-
-	// 	const stock = Number(response.purchase_Qty) - Number(response.soldQty);
-	// 	return {
-	// 		id: response.id,
-	// 		name: response.product.name,
-	// 		batchNumber: response.batchcode,
-	// 		stock: stock,
-	// 		sellingPrice: response.sale_Price,
-	// 		buyPrice: response.purchase_Price,
-	// 		user: response.user
-	// 	};
-	// }
-
-	// private async fetchFilterData(searchParam: string): Promise<Purchases | null> {
-	// 	const searchValue = searchParam.trim();
-	// 	const response = await this.purchaseRepository.findOne({
-	// 		where: {
-	// 			batchcode: ILike(`${searchValue}%`)
-	// 		},
-	// 		relations: ['product']
-	// 	});
-	// 	return response || null;
-
-
-
-	// }
-
 
 	async filterByBatch(searchParam: string) {
 		const response = await this.fetchFilterData(searchParam);
@@ -141,13 +128,15 @@ export class PurchaseService {
 				stock: stock,
 				sellingPrice: purchase.sale_Price,
 				buyPrice: purchase.purchase_Price,
-				user: purchase.user
+				user: purchase.user,
+				product: purchase.product
 			};
 		})
 		const filteredData = mappedData.filter((item) => item.stock > 0);
 
 		return filteredData;
 	}
+
 	private async fetchFilterData(searchParam: string): Promise<Purchases[]> {
 		const searchValue = searchParam.trim();
 		const response = await this.purchaseRepository.find({
