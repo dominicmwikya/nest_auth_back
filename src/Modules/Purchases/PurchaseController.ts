@@ -73,7 +73,7 @@ export class PurchaseController {
 		}
 	}
 
-	@Delete('/delete-multiple')
+	@Delete('/ "delete-multiple')
 	async deleteMultiplePurchases(@Body() body: { ids: number[] }) {
 		const results = await Promise.all(
 			body.ids.map(async id => {
