@@ -20,7 +20,7 @@ export class UserEntity extends BaseEntity {
   @Column()
   password!: string;
 
-  @Column({ default: 'Active' })
+  @Column({ default: 'Inactive' })
   status!: string;
 
   @Column({ default: 'user' })

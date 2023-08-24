@@ -1,7 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Product } from "src/Entities/Product.entity";
-import { Purchases } from "src/Entities/Purchases.entity";
 import { Repository } from "typeorm";
 import { PurchaseService } from "../Purchases/PurchaseService";
 import { createProductDTO } from "./createProductDTO";
@@ -24,7 +23,8 @@ export class ProductService {
 	}
 
 	async createProduct(data: createProductDTO) {
-		const exists_product = await this.productRepository.findOne({ where: { name: data.name } });
+		const exists_product = await this.productRepository.findOne(
+			{ where: { name: data.name, flag: 0 } });
 		if (!exists_product) {
 			try {
 				const { name, category, min_qty, qty, sku, description } = data;

@@ -22,7 +22,6 @@ export class SaleService {
             if (!productExists) {
                 throw new HttpException(`Product with ID ${productId} not found`, HttpStatus.NOT_FOUND);
             }
-
             if (quantity <= productExists.qty) {
                 const purchaseExists = await this.purchaseService.findOne(editId);
                 const purchaseBalance = purchaseExists.purchase_Qty - purchaseExists.soldQty;

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BatchNumbers } from './Entities/BatchNumbers';
 import { Product } from './Entities/Product.entity';
 import { Profile } from './Entities/Profile.entity';
 import { Purchases } from './Entities/Purchases.entity';
@@ -10,12 +11,12 @@ import { UserEntity } from './Entities/User.entity';
 import { Sale } from './Entities/sales.entity';
 import { AuthModule } from './Modules/Auth/AuthModule';
 import { BatchModule } from './Modules/Batchs/BatchModule';
+import { EmailModule } from './Modules/Email/Email.Module';
 import { ProductModule } from './Modules/Products/ProductModule';
 import { PurchaseModule } from './Modules/Purchases/PurchaseModule';
 import { SalesModule } from './Modules/Sales/SalesModule';
 import { SupplierModule } from './Modules/Suppliers/SupplierModule';
 import { UsersModule } from './Modules/Users/UsersModule';
-import { BatchNumbers } from './Entities/BatchNumbers';
 @Module({
   imports: [
     ProductModule,
@@ -25,6 +26,7 @@ import { BatchNumbers } from './Entities/BatchNumbers';
     BatchModule,
     SalesModule,
     SupplierModule,
+    EmailModule,
     ConfigModule.forRoot(),
     TypeOrmModule.forRootAsync({
       useFactory: () => {
@@ -36,7 +38,7 @@ import { BatchNumbers } from './Entities/BatchNumbers';
           password: process.env.DB_PASSWORD,
           database: process.env.DB_NAME,
           entities: [UserEntity, Profile, Product, Purchases, Sale, Role, Supplier, BatchNumbers], // Use the resolved path
-          synchronize: false
+          synchronize: true
         };
       }
     })

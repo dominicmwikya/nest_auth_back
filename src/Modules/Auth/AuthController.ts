@@ -26,7 +26,6 @@ export class AuthController {
 			return {
 				id: req.user.id,
 				email: req.user.email,
-				authState: req.user.authState
 			}
 		}
 		return {
