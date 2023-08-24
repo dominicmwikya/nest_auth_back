@@ -1,10 +1,9 @@
-// users.service.ts
-
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { UserEntity } from 'src/Entities/User.entity';
 import { Repository } from 'typeorm';
 import { Bcryptpassword } from '../Auth/Utils/bycrpt.util';
-import { UserEntity } from 'src/Entities/User.entity';
+import { EmailService } from '../Email/email.service';
 
 @Injectable()
 export class UsersService {
@@ -12,13 +11,12 @@ export class UsersService {
 		private bycrptpassword: Bcryptpassword,
 		@InjectRepository(UserEntity)
 		private userRepository: Repository<UserEntity>,
+		private emailService: EmailService,
 	) { }
 
 
 	async findOneByEmail(email: string) {
 		return await this.userRepository.findOne({ where: { email: email } });
-
-
 	}
 	async findOne(id: number) {
 		try {
@@ -39,9 +37,10 @@ export class UsersService {
 			const existingUser = await this.findOneByEmail(email);
 			if (existingUser) {
 				return {
-					error: `${existingUser.email}  already exists! choose different email`,
-				}
+					error: `${existingUser.email} already exists! Choose a different email.`,
+				};
 			}
+
 			const hashedPassword = await this.bycrptpassword.hashPassword(password);
 			const uniquestring = this.generateRandomString();
 			user.password = hashedPassword;
@@ -50,14 +49,23 @@ export class UsersService {
 			user.email = email;
 			user.phone = phone;
 			user.username = username;
-			user.role = role
-			return await this.userRepository.save(user);
+			user.role = role;
 
+			const newUser = await this.userRepository.save(user);
+
+			try {
+				await this.emailService.SendUserEmail(newUser, uniquestring);
+				console.log('Welcome email sent successfully.');
+			} catch (error) {
+				console.error('Error sending welcome email:', error.message);
+				// Continue execution even if the email sending fails
+			}
+
+			return newUser;
 		} catch (error) {
 			throw new HttpException({ error: "SERVER ERROR." }, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
-
 
 	private generateRandomString(): string {
 		return Math.random().toString(36).slice(2, 9);
