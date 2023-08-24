@@ -1,6 +1,6 @@
-import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
-import { UsersService } from "../Users/UserService";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { UsersService } from "../Users/UserService";
 import { Bcryptpassword } from "./Utils/bycrpt.util";
 @Injectable()
 export class AuthService {
@@ -25,7 +25,7 @@ export class AuthService {
                 HttpStatus.UNAUTHORIZED,
             );
         }
-        const payload = { id: user.id, name: user.username };
+        const payload = { id: user.id, name: user.username, email: user.email };
         return {
             accessToken: await this.jwtService.signAsync(payload),
             role: user.role,

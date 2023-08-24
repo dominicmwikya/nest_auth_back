@@ -24,7 +24,7 @@ export class Product extends BaseEntity {
 	@Column({ default: null, nullable: true })
 	description: string;
 
-	@OneToMany(() => Purchases, purchase => purchase.product, { onDelete: 'CASCADE' })
+	@OneToMany(() => Purchases, purchase => purchase.product)
 	@JoinColumn()
 	purchases!: Purchases[];
 
@@ -40,7 +40,7 @@ export class Product extends BaseEntity {
 
 	@ManyToOne(() => Supplier, (supplier) => supplier.products, { onDelete: 'CASCADE' })
 	@JoinColumn()
-	supplier!: Supplier;
+	supplier!: Supplier[];
 
 	@Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
 	createdAt!: Date;

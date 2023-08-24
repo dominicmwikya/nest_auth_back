@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { format } from 'date-fns';
-import { BatchNumbers } from "src/Entities/BatchNumbers.entity";
+import { BatchNumbers } from 'src/Entities/BatchNumbers';
 import { Repository } from "typeorm";
 @Injectable()
 export class BatchService {

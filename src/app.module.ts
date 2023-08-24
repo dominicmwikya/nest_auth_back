@@ -15,6 +15,7 @@ import { PurchaseModule } from './Modules/Purchases/PurchaseModule';
 import { SalesModule } from './Modules/Sales/SalesModule';
 import { SupplierModule } from './Modules/Suppliers/SupplierModule';
 import { UsersModule } from './Modules/Users/UsersModule';
+import { BatchNumbers } from './Entities/BatchNumbers';
 @Module({
   imports: [
     ProductModule,
@@ -34,7 +35,7 @@ import { UsersModule } from './Modules/Users/UsersModule';
           username: process.env.DB_USER,
           password: process.env.DB_PASSWORD,
           database: process.env.DB_NAME,
-          entities: [UserEntity, Profile, Product, Purchases, Sale, Role, Supplier], // Use the resolved path
+          entities: [UserEntity, Profile, Product, Purchases, Sale, Role, Supplier, BatchNumbers], // Use the resolved path
           synchronize: false
         };
       }
