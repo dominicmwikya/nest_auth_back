@@ -1,12 +1,14 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Product } from "src/Entities/Product.entity";
+import { Purchases } from "src/Entities/Purchases.entity";
 import { Repository } from "typeorm";
+import { PurchaseService } from "../Purchases/PurchaseService";
 import { createProductDTO } from "./createProductDTO";
 @Injectable()
 export class ProductService {
 	constructor(@InjectRepository(Product) private productRepository: Repository<Product>,
-
+		private readonly purchaseService: PurchaseService
 	) { }
 
 	async findAll(): Promise<Product[]> {
@@ -84,6 +86,10 @@ export class ProductService {
 		try {
 			const product = await this.findOne(id);
 			const result = await this.productRepository.update({ id: product.id }, { flag: 1 });
+			// Update associated purchases
+			if (result.affected !== 0) {
+				await this.purchaseService.deletePurchaseByProductId(product.id);
+			}
 			return result.affected !== 0;
 		} catch (error: any) {
 			throw new HttpException(`Failed to update product: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -97,7 +103,7 @@ export class ProductService {
 	async findOne(id: number) {
 		return await this.productRepository.findOne({
 			where: { id: id, flag: 0 },
-			relations: ['purchases', 'sales']
+			relations: ['purchases', 'sales', 'users']
 		});
 	}
 }
