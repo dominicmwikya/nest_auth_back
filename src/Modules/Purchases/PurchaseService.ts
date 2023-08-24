@@ -95,8 +95,6 @@ export class PurchaseService {
 				throw update;
 			}
 			const response = await this.purchaseRepository.update({ id: update.id }, { flag: 1 });
-
-			console.log(response)
 			return response.affected !== 0;
 		} catch (error) {
 			throw new HttpException(`Failed to update product: ${error.message}`,
@@ -104,6 +102,18 @@ export class PurchaseService {
 		}
 	}
 
+	async deletePurchaseByProductId(productId: number): Promise<void> {
+		try {
+			const purchases = await this.purchaseRepository.find({ where: { product: { id: productId } } });
+
+			const updatePromises = purchases.map(async purchase => {
+				await this.purchaseRepository.update({ id: purchase.id }, { flag: 1 });
+			});
+			await Promise.all(updatePromises);
+		} catch (error) {
+			throw new Error(`Failed to update associated purchases: ${error.message}`);
+		}
+	}
 	async findOne(id: number) {
 		const update = await this.purchaseRepository.findOne({ where: { id: id }, relations: ['product'] });
 		if (!update) {
