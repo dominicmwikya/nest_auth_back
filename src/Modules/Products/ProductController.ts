@@ -2,6 +2,7 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { Product } from 'src/Entities/Product.entity';
 import { AuthGuard } from '../Auth/authGuard';
+import { Roles } from '../Auth/role.decorator';
 import { ProductService } from './ProductService';
 import { createProductDTO } from './createProductDTO';
 
@@ -10,6 +11,7 @@ export class ProductController {
 	constructor(private productService: ProductService) { }
 
 	@UseGuards(AuthGuard)
+	@Roles('DEFAULT USER', 'Admin')
 	@Get()
 	async getProducts() {
 		const result = await this.productService.findAll();
