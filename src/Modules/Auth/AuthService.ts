@@ -25,7 +25,7 @@ export class AuthService {
                 HttpStatus.UNAUTHORIZED,
             );
         }
-        const payload = { id: user.id, name: user.username, email: user.email };
+        const payload = { id: user.id, name: user.username, email: user.email, roles: user.role };
         return {
             accessToken: await this.jwtService.signAsync(payload),
             role: user.role,

@@ -32,5 +32,4 @@ export class AuthController {
 			error: "No valid token found! please login"
 		}
 	}
-
 }

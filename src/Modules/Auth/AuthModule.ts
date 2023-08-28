@@ -1,12 +1,11 @@
 import { Module } from "@nestjs/common";
-import { AuthService } from "./AuthService";
-import { AuthController } from "./AuthController";
+import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from "../Users/UsersModule";
-import { JwtModule } from '@nestjs/jwt'
-import { jwtConstants } from "./constants";
-import { AuthGuard } from "./authGuard";
-import { roleGuard } from "./rolesGuards";
+import { AuthController } from "./AuthController";
+import { AuthService } from "./AuthService";
 import { Bcryptpassword } from "./Utils/bycrpt.util";
+import { AuthGuard } from "./authGuard";
+import { jwtConstants } from "./constants";
 @Module({
     imports: [UsersModule,
         JwtModule.register({
@@ -15,7 +14,7 @@ import { Bcryptpassword } from "./Utils/bycrpt.util";
             signOptions: { expiresIn: '10h' }
         })
     ],
-    providers: [AuthService, Bcryptpassword, AuthGuard, roleGuard],
+    providers: [AuthService, Bcryptpassword, AuthGuard],
     controllers: [AuthController],
     exports: [AuthService, Bcryptpassword]
 })

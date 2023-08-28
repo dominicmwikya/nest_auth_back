@@ -55,9 +55,13 @@ export class UsersService {
 
 			try {
 				await this.emailService.SendUserEmail(newUser, uniquestring);
-				console.log('Welcome email sent successfully.');
+				return {
+					message: "Email Send successfully"
+				}
 			} catch (error) {
-				console.error('Error sending welcome email:', error.message);
+				return {
+					error: `Error sending welcome email:, ${error.message}`
+				}
 				// Continue execution even if the email sending fails
 			}
 
