@@ -19,7 +19,7 @@ export class ProductController {
 	}
 
 	@UseGuards(AuthGuard)
-	// @UsePipes(new ValidationPipe())
+	@Roles('DEFAULT USER', 'Admin')
 	@Post('/create')
 	async create(@Body() product: createProductDTO) {
 		try {
@@ -36,7 +36,7 @@ export class ProductController {
 			}
 		}
 	}
-
+	@Roles('DEFAULT USER', 'Admin')
 	@Delete('/:id')
 	async deleteProduct(@Param('id') id: number) {
 		try {
@@ -53,7 +53,7 @@ export class ProductController {
 			}
 		}
 	}
-
+	@Roles('DEFAULT USER', 'Admin1')
 	@Put('/:id')
 	async updateProduct(@Param('id') id: number, @Body() data: Product) {
 		try {

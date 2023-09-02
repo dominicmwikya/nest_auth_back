@@ -14,7 +14,7 @@ export class AuthGuard implements CanActivate {
 		const token = this.extractTokenFromHeader(request);
 
 		if (!token) {
-			throw new UnauthorizedException();
+			throw new UnauthorizedException("You must log in to access the app services");
 		}
 		try {
 			const payload = await this.jwtService.verifyAsync(token, {
@@ -27,7 +27,7 @@ export class AuthGuard implements CanActivate {
 			]);
 
 			if (requiredRoles && !requiredRoles.some(role => payload.roles.includes(role))) {
-				throw new UnauthorizedException('Insufficient role');
+				throw new UnauthorizedException('You are not authorized to access this resource');
 			}
 
 			request['user'] = {
