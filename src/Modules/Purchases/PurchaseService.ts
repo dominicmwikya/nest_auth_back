@@ -100,17 +100,21 @@ export class PurchaseService {
 		}
 	}
 
-	async deletePurchase(id: number): Promise<boolean> {
+	async deletePurchase(id: number): Promise<any> {
 		try {
 			const update = await this.findOne(id);
 			if (update instanceof HttpException) {
-				throw update;
+				return { error: update }
 			}
 			const response = await this.purchaseRepository.update({ id: update.id }, { flag: 1 });
-			return response.affected !== 0;
+			if (response.affected === 1) {
+				return { message: `Record ${id} deleted successfully` };
+			}
+			else {
+				return { error: `Failed to delete record ${id}` };
+			}
 		} catch (error) {
-			throw new HttpException(`Failed to update product: ${error.message}`,
-				HttpStatus.INTERNAL_SERVER_ERROR);
+			return { error: `Error occured while deleting  id ${id}: ${error.message}` };
 		}
 	}
 

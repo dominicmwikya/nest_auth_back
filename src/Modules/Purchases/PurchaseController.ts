@@ -57,13 +57,17 @@ export class PurchaseController {
 
 	@Delete('/delete/:id')
 	async deletePurchase(@Param('id') id: number) {
-		const result = await this.purchaseService.deletePurchase(id);
-
-		return {
-			result: result,
-			message: ` purchase id ${id} deleted successfully`,
-			HttpStatus: HttpStatus.OK,
+		try {
+			const result = await this.purchaseService.deletePurchase(id);
+			return result;
+		} catch (error) {
+			return error;
 		}
+		// return {
+		// 	result: result,
+		// 	message: ` purchase id ${id} deleted successfully`,
+		// 	HttpStatus: HttpStatus.OK,
+		// }
 	}
 
 	@Delete('/delete-multiple')
