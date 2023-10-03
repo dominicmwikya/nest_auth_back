@@ -1,13 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Product } from "src/Entities/Product.entity";
-import { Repository } from "typeorm";
+import { EntityManager, Repository } from "typeorm";
 import { PurchaseService } from "../Purchases/PurchaseService";
 import { createProductDTO } from "./createProductDTO";
 @Injectable()
 export class ProductService {
 	constructor(@InjectRepository(Product) private productRepository: Repository<Product>,
-		private readonly purchaseService: PurchaseService
+		private readonly purchaseService: PurchaseService,
 	) { }
 
 	async findAll(): Promise<Product[]> {
@@ -49,11 +49,9 @@ export class ProductService {
 		try {
 			// Fetch the product from the database
 			const productToUpdate = await this.productRepository.findOne({ where: { id: productId } });
-
 			if (productToUpdate) {
 				// Update the product's quantity
 				productToUpdate.qty = newQty;
-
 				// Save the updated product to the database
 				await this.productRepository.save(productToUpdate);
 
@@ -63,11 +61,14 @@ export class ProductService {
 			}
 		} catch (error) {
 			return {
-				error: `Error occured while updating item id ${productId}`
+				error: `Error occured ${productId}`
 			}
 		}
 	}
 
+	async updateProductQuantity(entityManager: EntityManager, productId: number, newQty: number) {
+		return await entityManager.update(Product, { id: productId }, { qty: newQty });
+	}
 
 	async updateProduct(id: number, data: any) {
 		const product = await this.productRepository.findOne({ where: { id: id } });
@@ -82,15 +83,27 @@ export class ProductService {
 		}
 	}
 
-	async deleteProduct(id: number): Promise<boolean> {
+	async deleteProduct(id: number): Promise<boolean | {}> {
 		try {
 			const product = await this.findOne(id);
 			const result = await this.productRepository.update({ id: product.id }, { flag: 1 });
-			// Update associated purchases
 			if (result.affected !== 0) {
-				await this.purchaseService.deletePurchaseByProductId(product.id);
+				const deleteAssociatedPurchases = await this.purchaseService.deletePurchaseByProductId(product.id);
+				if (deleteAssociatedPurchases) {
+					return true;
+				}
+				else {
+					return {
+						error: `Error deleting purchases with id ${id}`
+					}
+				}
+
+			} else {
+				return {
+					error: `Error deleting ${id}`
+				}
 			}
-			return result.affected !== 0;
+
 		} catch (error: any) {
 			throw new HttpException(`Failed to update product: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
 		}

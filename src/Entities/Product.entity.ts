@@ -34,7 +34,7 @@ export class Product extends BaseEntity {
 	@Column({ default: 0 })
 	flag!: number;
 
-	@OneToMany(() => Sale, sale => sale.products, { onDelete: 'CASCADE' })
+	@OneToMany(() => Sale, sale => sale.product, { onDelete: 'CASCADE' })
 	@JoinColumn()
 	sales!: Sale[];
 

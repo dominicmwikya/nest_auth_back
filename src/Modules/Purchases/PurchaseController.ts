@@ -74,29 +74,44 @@ export class PurchaseController {
 	}
 
 	@Delete('/delete-multiple')
-	async deleteMultiplePurchases(@Body() body: { ids: number[] }) {
-		const results = await Promise.all(
-			body.ids.map(async id => {
-				const purchase = await this.purchaseService.findOne(id);
-				const product = purchase.product;
-				product.qty -= purchase.purchase_Qty;
-				const productUpdate = await this.productService.updateProduc1(product.id, product.qty);
+	async deleteMultiplePurchases(@Body() body: { ids: number[] | number }) {
+		try {
+			let purchaseIds = Array.isArray(body.ids) ? body.ids : [body.ids];
 
-				if (productUpdate.message) {
-					const result = await this.purchaseService.deletePurchase(id);
-					return {
-						result,
-						message: `Purchase id ${id} deleted ${result ? 'successfully' : 'unsuccessfully'}`,
-					};
-				}
-				else {
-					return {
-						id,
-						error: ` ${productUpdate.error}`
+			const results = await Promise.all(
+				purchaseIds.map(async id => {
+					const purchase = await this.purchaseService.findOne(id);
+					const product = purchase.product;
+					product.qty -= purchase.purchase_Qty;
+					const productUpdate = await this.productService.updateProduc1(product.id, product.qty);
+
+					if (productUpdate.message) {
+						const result = await this.purchaseService.deletePurchase(id);
+						return result;
 					}
-				}
-			}));
-		return results;
+					else {
+						return {
+							error: `${productUpdate.error}`
+						}
+					}
+				}));
+
+			const isSuccess = results.every(result => typeof result === "boolean" && result === true);
+			if (isSuccess) {
+				return {
+					message: " products deleted successfully"
+				};
+			}
+			else {
+				return {
+					error: "Some products could not be deleted"
+				};
+			}
+		} catch (error) {
+			return {
+				error: error
+			}
+		}
 	}
 
 	@Get('/search/:searchParam')

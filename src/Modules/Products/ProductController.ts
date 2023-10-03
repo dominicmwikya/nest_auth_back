@@ -36,23 +36,37 @@ export class ProductController {
 			}
 		}
 	}
+
 	@Roles('DEFAULT USER', 'Admin')
-	@Delete('/:id')
-	async deleteProduct(@Param('id') id: number) {
+	@Delete('/remove')
+	async productDelete(@Body() body: { ids: number[] | number }) {
 		try {
-			await this.productService.deleteProduct(id);
-			return {
-				message: `product id ${id} deleted succesfully`
+			const idBody = body.ids;
+			const idArray = Array.isArray(idBody) ? idBody : [idBody];
+			const result = await Promise.all(
+				idArray.map(async id => {
+					return await this.productService.deleteProduct(id);
+				})
+			);
+			const isSuccess = result.every(result => typeof result === "boolean" && result === true);
+			if (isSuccess) {
+				return {
+					message: " products deleted successfully"
+				};
 			}
+			else {
+				return {
+					error: "Some products could not be deleted"
+				};
+			}
+
 		} catch (error) {
-			if (error instanceof HttpException) {
-				throw error;
-			} else {
-				throw new HttpException({ error: `Error occured while deleted product id.  ${id}` },
-					HttpStatus.INTERNAL_SERVER_ERROR)
+			return {
+				error: error
 			}
 		}
 	}
+
 	@Roles('DEFAULT USER', 'Admin1')
 	@Put('/:id')
 	async updateProduct(@Param('id') id: number, @Body() data: Product) {

@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Product } from "src/Entities/Product.entity";
 import { Purchases } from "src/Entities/Purchases.entity";
 import { UserEntity } from "src/Entities/User.entity";
-import { ILike, Repository } from "typeorm";
+import { EntityManager, ILike, Repository } from "typeorm";
 import { BatchService } from "../Batchs/BatchService";
 @Injectable()
 export class PurchaseService {
@@ -75,6 +75,9 @@ export class PurchaseService {
 		}
 	}
 
+	async updatePurchaseQuantity(entityManager: EntityManager, pId: number, soldQty: any) {
+		return await entityManager.update(Purchases, { id: pId }, { soldQty: soldQty });
+	}
 
 	async updatePurchase(pId: number, data: any) {
 		const purchase = await this.findOne(pId);
@@ -102,7 +105,7 @@ export class PurchaseService {
 		}
 	}
 
-	async deletePurchaseByProductId(productId: number): Promise<void> {
+	async deletePurchaseByProductId(productId: number): Promise<boolean> {
 		try {
 			const purchases = await this.purchaseRepository.find({ where: { product: { id: productId } } });
 
@@ -110,6 +113,7 @@ export class PurchaseService {
 				await this.purchaseRepository.update({ id: purchase.id }, { flag: 1 });
 			});
 			await Promise.all(updatePromises);
+			return true;
 		} catch (error) {
 			throw new Error(`Failed to update associated purchases: ${error.message}`);
 		}

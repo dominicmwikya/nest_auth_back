@@ -26,12 +26,12 @@ export class Sale extends BaseEntity {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   sell_date!: Date;
-  // @Column()
-  // payment_mode!: string;
+  @Column({ default: null })
+  status!: string;
 
   @ManyToOne(() => Product, product => product.sales, { onDelete: 'CASCADE' })
   @JoinColumn()
-  products!: Product;
+  product!: Product;
 
   @ManyToOne(() => UserEntity, user => user.sales, { onDelete: 'CASCADE' })
   @JoinColumn()

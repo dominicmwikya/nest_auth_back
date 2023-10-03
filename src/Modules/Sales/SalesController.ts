@@ -4,6 +4,7 @@ import { Like } from 'typeorm';
 import { ProductService } from '../Products/ProductService';
 import { PurchaseService } from '../Purchases/PurchaseService';
 import { SaleService } from './SalesService';
+
 @Controller('sales')
 export class SalesController {
     constructor(private productService: ProductService,
@@ -13,22 +14,46 @@ export class SalesController {
     @Post('/create')
     async createSale(@Body() data) {
         try {
-            const response = await this.salesService.createSale(data);
-            if (response.message) {
-                return { message: 'Product created successfully' };
-            } else {
-                return { error: `${response.error}` }
+            let results = [];
+            let items = Array.isArray(data.items) ? data.items : [data]
+            await Promise.all(
+                items.map(async (item: any) => {
+                    const response = await this.salesService.createSale(item);
+                    if (response.message) {
+                        results.push({ message: 'Sale record created successfully' });
+                    } else {
+                        results.push({ error: `${response.error}` });
+                    }
+                })
+            );
+            const hasError = results.some((result) => result.error);
+            if (hasError) {
+                console.log(results[0].error);
+                return { error: `${results[0].error}` }
+            }
+            else {
+                return { message: `${results[0].message} ` }
             }
         } catch (error) {
-            return { error: `${error}` }
+            return { error: `${error}` };
+        }
+    }
+    //All daily sales
+    @Get()
+    fetchSales() {
+        return this.salesService.getSales();
+    }
+    //monthly sales per product per day
+    @Get('/monthly')
+    async getMonthProductSales() {
+        try {
+            return await this.salesService.monthlyProductSales();
+        } catch (error) {
+            console.log(error)
+            return error;
         }
     }
 
-
-    @Get()
-    async fetchSales() {
-        return this.salesService.getSales();
-    }
     @Get()
     async sales(@Query() params: any) {
         const { sortBy, orderBy, searchValue, searchColumn, take, skip } = params;
@@ -60,27 +85,6 @@ export class SalesController {
 
         } catch (error) {
             throw new HttpException({ error: `${error} error fetching sales` }, HttpStatus.INTERNAL_SERVER_ERROR)
-        }
-    }
-
-    @Get('/dailysales')
-    async groupSalesByDay() {
-        try {
-            const threshold = 0;
-            const groupDailySales = await this.salesService.groupSalesByDay(threshold);
-            return groupDailySales;
-        } catch (error) {
-            return error;
-        }
-    }
-
-    @Get('/daily')
-    async getDailySales(@Query() params) {
-        const { startDate, endDate } = params;
-        try {
-            return this.salesService.dailySales(startDate, endDate);
-        } catch (error) {
-            throw new HttpException({ error: `${error} failed to fetch sales` }, HttpStatus.INTERNAL_SERVER_ERROR)
         }
     }
 

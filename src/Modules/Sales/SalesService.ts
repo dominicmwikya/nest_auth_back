@@ -1,9 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { endOfDay, format, startOfDay, subDays } from 'date-fns';
 import { Sale } from "src/Entities/sales.entity";
 import { Pagination } from "src/helpers/Pagination";
 import { PaginationData, PaginationOptions } from "src/helpers/paginationOptions";
-import { Repository } from "typeorm";
+import { EntityManager, Repository } from "typeorm";
 import { ProductService } from "../Products/ProductService";
 import { PurchaseService } from "../Purchases/PurchaseService";
 @Injectable()
@@ -11,14 +12,17 @@ export class SaleService {
     constructor(@InjectRepository(Sale)
     private salesRepository: Repository<Sale>,
         private productService: ProductService,
-        private purchaseService: PurchaseService
+        private purchaseService: PurchaseService,
+        private readonly entityManager: EntityManager,
     ) { }
     async createSale(data: any) {
+        const queryRunner = this.entityManager.connection.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
         try {
+            const entityManager = queryRunner.manager;
             const { customer_name, userId, productId, price, total, quantity, amount, balance, editId } = data;
-
             const productExists = await this.productService.productById(productId);
-
             if (!productExists) {
                 throw new HttpException(`Product with ID ${productId} not found`, HttpStatus.NOT_FOUND);
             }
@@ -37,57 +41,41 @@ export class SaleService {
                         amount: amount,
                         balance: balance,
                         user: userId,
-                        products: productId
+                        product: productId,
+                        status: balance === '0.00' ? 'Paid' : 'Due'
                     });
-
-                    await this.salesRepository.save(newSale);
+                    await entityManager.save(newSale);
 
                     const newProductQty = Number(productExists.qty) - Number(quantity);
                     productExists.qty = newProductQty;
 
-                    const result = await this.productService.updateProduc1(productId, productExists.qty);
+                    await this.productService.updateProductQuantity(entityManager, productId, productExists.qty);
+                    const purchaseQtySold = Number(purchaseExists.soldQty) + Number(quantity);
+                    purchaseExists.soldQty = purchaseQtySold;
 
-                    if (result.message) {
-                        const purchaseQtySold = Number(purchaseExists.soldQty) + Number(quantity);
-                        purchaseExists.soldQty = purchaseQtySold;
-
-                        const response = await this.purchaseService.updatePurchase1(editId, purchaseExists.soldQty);
-
-                        if (typeof response === 'number') {
-                            return {
-                                status: HttpStatus.ACCEPTED,
-                                message: 'Sale record created successfully'
-                            };
-                        } else if (typeof result === 'string') {
-                            return {
-                                error: result
-                            };
-                        } else {
-                            throw new HttpException('Error occurred when updating purchases', HttpStatus.INTERNAL_SERVER_ERROR);
-                        }
-                    } else {
-                        return {
-                            error: result.error
-                        };
-                    }
+                    await this.purchaseService.updatePurchaseQuantity(entityManager, editId, purchaseExists.soldQty);
+                    await queryRunner.commitTransaction();
+                    return { message: "Sale record created successfully!" }
                 }
             } else {
-                return {
-                    error: `Insufficient quantity of product: ${productExists.name}`
-                };
+                return { error: `Insufficient quantity of product: ${productExists.name}`};
             }
         } catch (error) {
-            console.error('Failed to create sales:', error);
-            throw new HttpException('Error creating sale record', HttpStatus.INTERNAL_SERVER_ERROR);
+            await queryRunner.rollbackTransaction()
+            return { error: `Error occured while creating sale ` }
+        }
+        finally {
+            await queryRunner.release();
         }
     }
-
-    async getSales() {
-        return await this.salesRepository.find();
-    }
+    //backend pagination when fetching sales
     async fetchSales(options: PaginationOptions): Promise<PaginationData<Sale>> {
         const Result = await Pagination(this.salesRepository, options);
         return Result;
+    }
+
+    async findOneById(id: number) {
+        return this.salesRepository.findOne({ where: { id: id } });
     }
 
     async groupSalesByDay(threshold: number) {
@@ -98,9 +86,9 @@ export class SaleService {
         const salesPerDayPromises = products.map(async (product) => {
             const salesPerDay = await this.salesRepository
                 .createQueryBuilder('sale')
-                .select('DATE(sale.sell_date)', 'day')
-                .addSelect('COUNT(*)', 'count')
-                .where('sale.productsId = :productId', { productId: product.id })
+                .select('DATE(sale.sell_date) AS date')
+                .addSelect('COUNT(*) AS count')
+                .where('sale.productId = :productId', { productId: product.id })
                 .andWhere('sale.sell_Date >= :today', { today })
                 .groupBy('day')
                 .having('COUNT(*) > :threshold', { threshold })
@@ -115,14 +103,11 @@ export class SaleService {
         return productsSalesPerDay
     }
 
-    async findOneById(id: number) {
-        return this.salesRepository.findOne({ where: { id: id } });
-    }
-
+    //filter by start and end date
     async dailySales(startDate: Date, endDate: Date) {
         try {
             const queryBuilder = this.salesRepository.createQueryBuilder('sale')
-                .select("DATE_FORMAT(sale.sell_date, '%Y-%m-%d')", 'saleDay')
+                .select("DATE(sale.sell_date, '%Y-%m-%d')", '')
                 .addSelect('product.name', 'productName')
                 .addSelect('SUM(sale.quantity)', 'totalQuantity')
                 .addSelect('SUM(sale.price * sale.quantity)', 'totalRevenue')
@@ -147,4 +132,113 @@ export class SaleService {
             return error;
         }
     }
+
+    async monthlyProductSales() {
+        const today = new Date();
+        const endDateFormatted = subDays(today, 30);
+        const startDateFormatted = format(endDateFormatted, 'yyyy-MM-dd 00:00:00');
+        const lastDayOfToday = format(today, 'yyyy-MM-dd 23:59:59');
+        const saleByDate = await this.salesRepository
+            .createQueryBuilder('sale')
+            .select('DATE(sale.sell_date) AS date')
+            .addSelect('product.name AS productName')
+            .addSelect('SUM(sale.total) AS TotalRevenue')
+            .addSelect('SUM(sale.quantity) AS TotalQuantity')
+            .addSelect('SUM(sale.amount) AS TotalAmount')
+            .addSelect('SUM(sale.balance) AS TotalBalance')
+            .innerJoin('sale.product', 'product')
+            .where(`DATE(sale.sell_date) BETWEEN :startDate AND :endDate`, {
+                startDate: startDateFormatted,
+                endDate: lastDayOfToday
+            })
+            .groupBy('DATE(sale.sell_date), product.name')
+            .orderBy('date', 'DESC')
+            .getRawMany();
+
+        const salesMap = new Map<string, number>();
+        saleByDate.forEach((sale) => {
+            let saleDate = format(sale.date, 'yyyy/MM/dd');
+            let total = Number(sale.TotalRevenue);
+            if (salesMap.has(saleDate)) {
+                salesMap.set(saleDate, salesMap.get(saleDate) + total);
+            } else {
+                salesMap.set(saleDate, total);
+            }
+        })
+        const salesm = Array.from(salesMap).map(([date, total]) => ({
+            date,
+            total,
+        }));
+        const formattedResults = saleByDate.map((result) => ({
+            date: format(result.date, 'yyyy/MM/dd'),
+            productName: result.productName,
+            TotalRevenue: result.TotalRevenue,
+            TotalQuantity: result.TotalQuantity,
+            TotalAmount: result.TotalAmount,
+            TotalBalance: result.TotalBalance,
+            status: result.TotalBalance === '0.00' ? 'Paid' : 'Due'
+        }));
+        return {
+            results: formattedResults,
+            chartDt: salesm
+        };
+    }
+
+    //fetch all daily sailes
+    async getSales() {
+        const today = new Date();
+        const startOfToday = startOfDay(today);
+        const endOfToday = endOfDay(today);
+        const startDateFormatted = format(startOfToday, 'yyyy-MM-dd 00:00:00');
+        const endtoday = format(endOfToday, 'yyyy-MM-dd 23:59:59');
+
+        // Fetch sales records for today using a date range query
+        const todaysales = await this.salesRepository
+            .createQueryBuilder('sale')
+            .leftJoinAndSelect('sale.product', 'product')
+            .where('sale.sell_date BETWEEN :start AND :end', {
+                start: startDateFormatted,
+                end: endtoday,
+            })
+            .orderBy('sale.sell_date', 'DESC')
+            .getMany();
+
+        // Calculate total sales for today and group them by product name
+        const productMap = new Map<string, number>();
+
+        todaysales.forEach((sale) => {
+            const productName = sale.product.name;
+            const total = Number(sale.total);
+
+            if (productMap.has(productName)) {
+                productMap.set(productName, productMap.get(productName) + total);
+            } else {
+                productMap.set(productName, total);
+            }
+        });
+
+        const productTotalsToday = Array.from(productMap).map(([name, total]) => ({
+            name,
+            total,
+        }));
+        // Fetch all sales records
+        const allSales = await this.salesRepository
+            .createQueryBuilder('sale')
+            .leftJoinAndSelect('sale.product', 'product')
+            .orderBy('sale.sell_date', 'DESC')
+            .getMany();
+
+        // Calculate total sales for all sales
+        let totalSumAll = 0;
+        allSales.forEach((sale) => {
+            totalSumAll += Number(sale.total);
+        });
+        return {
+            todays: productTotalsToday,
+            sales: allSales,
+            TotalRevenue: totalSumAll,
+        };
+    }
+
+
 }

@@ -37,6 +37,7 @@ import { UsersModule } from './Modules/Users/UsersModule';
           username: process.env.DB_USER,
           password: process.env.DB_PASSWORD,
           database: process.env.DB_NAME,
+          timezone: process.env.TIME_ZONE,
           entities: [UserEntity, Profile, Product, Purchases, Sale, Role, Supplier, BatchNumbers], // Use the resolved path
           synchronize: true
         };
