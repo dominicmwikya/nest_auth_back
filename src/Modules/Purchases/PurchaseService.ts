@@ -15,17 +15,16 @@ export class PurchaseService {
 
 	async CreatePurchase(product: Product, user: UserEntity, sprice: number, price: number, quantity: number) {
 		const batchNumber = await this.batchService.generateBatchNumber();
-		const newPurchase = this.purchaseRepository.create(
-			{
-				product,
-				user,
-				batchcode: batchNumber,
-				purchase_Price: price,
-				purchase_Qty: quantity,
-				sale_Price: sprice,
-				purchase_Total: Number.parseInt(price.toString()) *
-					Number.parseInt(quantity.toString()),
-			});
+		const newPurchase = this.purchaseRepository.create({
+			product,
+			user,
+			batchcode: batchNumber,
+			purchase_Price: price,
+			purchase_Qty: quantity,
+			sale_Price: sprice,
+			purchase_Total: Number.parseInt(price.toString()) *
+				Number.parseInt(quantity.toString()),
+		});
 		try {
 			const savedPurchase = await this.purchaseRepository.save(newPurchase);
 			product.qty += Number.parseInt(quantity.toString());
@@ -79,16 +78,26 @@ export class PurchaseService {
 		return await entityManager.update(Purchases, { id: pId }, { soldQty: soldQty });
 	}
 
-	async updatePurchase(pId: number, data: any) {
-		const purchase = await this.findOne(pId);
+	async updatePurchase(id: number, data: any) {
+		const purchase = await this.findOne(id);
 		if (purchase instanceof HttpException) {
-			throw purchase;
+			return { error: `purchase ${id} doesnt exist` };
 		}
-		const { purchase_Price, purchase_Qty, purchase_Total } = data;
-		const result = await this.purchaseRepository.update(
-			{ id: purchase.id },
-			{ purchase_Price, purchase_Qty, purchase_Total });
-		return result;
+		const { quantity, price, sprice } = data;
+		const updatedTotalQty = Number(quantity) * Number(price);
+		const result = await this.purchaseRepository.update({ id: purchase.id },
+			{
+				purchase_Price: price,
+				purchase_Qty: quantity,
+				sale_Price: sprice,
+				purchase_Total: updatedTotalQty
+			});
+		if (result.affected === 1) {
+			return { message: `purchase record id ${id} updated successfully` };
+		}
+		else {
+			return { error: `Failed to update purchase record ${id} Try gain` };
+		}
 	}
 
 	async deletePurchase(id: number): Promise<boolean> {

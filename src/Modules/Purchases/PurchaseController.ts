@@ -49,14 +49,7 @@ export class PurchaseController {
 	async updatePurchase(@Param('id') id: number, @Body() data: Purchases) {
 		try {
 			const result = await this.purchaseService.updatePurchase(id, data);
-			if (result instanceof HttpException) {
-				throw result;
-			} else {
-				return {
-					result: result,
-					HttpStatus: HttpStatus.OK
-				}
-			}
+			return result;
 		} catch (error) {
 			throw new HttpException({ error: `${error} error updating purchase` }, HttpStatus.INTERNAL_SERVER_ERROR)
 		}
@@ -77,7 +70,6 @@ export class PurchaseController {
 	async deleteMultiplePurchases(@Body() body: { ids: number[] | number }) {
 		try {
 			let purchaseIds = Array.isArray(body.ids) ? body.ids : [body.ids];
-
 			const results = await Promise.all(
 				purchaseIds.map(async id => {
 					const purchase = await this.purchaseService.findOne(id);
