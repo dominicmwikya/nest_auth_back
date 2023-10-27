@@ -25,7 +25,7 @@ export class Purchases extends BaseEntity {
 	@Column({ type: 'int' })
 	purchase_Qty!: number;
 
-	@Column({ type: 'decimal', precision: 10, scale: 2 })
+	@Column({ type: 'decimal', precision: 10, scale: 2, default: 0.00 })
 	purchase_Price!: number;
 
 	@Column({ type: 'decimal', precision: 10, scale: 2, default: 0.00 })
@@ -36,7 +36,8 @@ export class Purchases extends BaseEntity {
 
 	@Column({ default: 0 })
 	soldQty!: number;
-
+	@Column({ default: 0 })
+	status!: number
 	@Column()
 	batchcode!: string;
 	@Column({ default: 0 })

@@ -67,17 +67,17 @@ export class ProductService {
 	}
 
 	async updateProductQuantity(entityManager: EntityManager, productId: number, newQty: number) {
-		return await entityManager.update(Product, { id: productId }, { qty: newQty });
+		return await entityManager.update(Product, { id: productId }, { qty: newQty }, );
 	}
-
+	//
 	async updateProduct(id: number, data: any) {
 		const product = await this.productRepository.findOne({ where: { id: id } });
 		if (!product) {
 			throw new HttpException({ error: `product ${id} does not exist in the database` }, HttpStatus.NOT_FOUND)
 		}
 		try {
-			const { name, category, qty, min_qty, sku } = data;
-			return this.productRepository.update({ id: product.id }, { name, category, qty, min_qty, sku });
+			const { name, category, qty, min_qty, sku, description } = data;
+			return this.productRepository.update({ id: product.id }, { name, category, qty, min_qty, sku, description: description });
 		} catch (error) {
 			throw new HttpException({ error: `${error} Error occured while Updating product! Try again` }, HttpStatus.INTERNAL_SERVER_ERROR)
 		}

@@ -1,14 +1,12 @@
 import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Product } from './Product.entity';
 import { Purchases } from './Purchases.entity';
+import { Receipt } from './Receipt.entity';
 import { UserEntity } from './User.entity';
 @Entity()
 export class Sale extends BaseEntity {
   @PrimaryGeneratedColumn()
   id!: number;
-
-  @Column()
-  customer_name!: string;
   @Column()
   quantity!: number;
 
@@ -39,4 +37,7 @@ export class Sale extends BaseEntity {
 
   @OneToMany(() => Purchases, purchase => purchase.sale)
   purchases!: Purchases[];
+
+  @ManyToOne(() => Receipt, (receipt) => receipt.sales)
+  receipt: Receipt;
 }

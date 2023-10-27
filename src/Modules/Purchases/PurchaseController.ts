@@ -23,12 +23,23 @@ export class PurchaseController {
 		}
 	}
 
+	@Get('/fastsales')
+	async getFastSales() {
+		try {
+			const result = await this.purchaseService.fetchFastSellingBatches();
+			return result;
+		} catch (error) {
+
+			return error
+		}
+	}
 	@Post('create')
 	async createPurchase(@Body() body: purchaseBodyData[]) {
 		const purchaseData = body;
 		const savedPurchases: Purchases[] = [];
 		try {
 			for (const purchase of purchaseData) {
+				console.log(purchase)
 				const product = await this.productService.productById(purchase.productId);
 				if (!product) {
 					throw new HttpException({ error: 'Product not found' }, HttpStatus.NOT_FOUND);
@@ -44,7 +55,6 @@ export class PurchaseController {
 			throw error;
 		}
 	}
-
 	@Put('/update/:id')
 	async updatePurchase(@Param('id') id: number, @Body() data: Purchases) {
 		try {
@@ -54,7 +64,6 @@ export class PurchaseController {
 			throw new HttpException({ error: `${error} error updating purchase` }, HttpStatus.INTERNAL_SERVER_ERROR)
 		}
 	}
-
 	@Delete('/delete/:id')
 	async deletePurchase(@Param('id') id: number) {
 		try {
@@ -63,45 +72,28 @@ export class PurchaseController {
 		} catch (error) {
 			return error;
 		}
-		// return {
-		// 	result: result,
-		// 	message: ` purchase id ${id} deleted successfully`,
-		// 	HttpStatus: HttpStatus.OK,
-		// }
 	}
 
-	@Delete('/delete-multiple')
+	@Put('/delete-multiple')
 	async deleteMultiplePurchases(@Body() body: { ids: number[] | number }) {
 		try {
+			let response = [];
+			let errorIds = [];
 			let purchaseIds = Array.isArray(body.ids) ? body.ids : [body.ids];
-			const results = await Promise.all(
+			await Promise.all(
 				purchaseIds.map(async id => {
-					const purchase = await this.purchaseService.findOne(id);
-					const product = purchase.product;
-					product.qty -= purchase.purchase_Qty;
-					const productUpdate = await this.productService.updateProduc1(product.id, product.qty);
-
-					if (productUpdate.message) {
-						const result = await this.purchaseService.deletePurchase(id);
-						return result;
+					const result = await this.purchaseService.testDeletePurchase(id);
+					response.push(result);
+					if (result.error) {
+						errorIds.push(id); // Track the IDs where errors occurred
 					}
-					else {
-						return {
-							error: `${productUpdate.error}`
-						}
-					}
+					return result;
 				}));
 
-			const isSuccess = results.every(result => typeof result === "boolean" && result === true);
-			if (isSuccess) {
-				return {
-					message: " products deleted successfully"
-				};
-			}
-			else {
-				return {
-					error: "Some products could not be deleted"
-				};
+			if (errorIds.length > 0) {
+				return { error: 'Deletion failed for IDs: ' + errorIds.join(', ') };
+			} else {
+				return { message: 'All deletions were successful.' };
 			}
 		} catch (error) {
 			return {
@@ -119,4 +111,6 @@ export class PurchaseController {
 	async findById(@Param('id') purchaseId: number) {
 		return await this.purchaseService.findOne(purchaseId)
 	}
+
+
 }

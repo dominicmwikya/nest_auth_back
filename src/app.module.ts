@@ -5,6 +5,7 @@ import { BatchNumbers } from './Entities/BatchNumbers';
 import { Product } from './Entities/Product.entity';
 import { Profile } from './Entities/Profile.entity';
 import { Purchases } from './Entities/Purchases.entity';
+import { Receipt } from './Entities/Receipt.entity';
 import { Role } from './Entities/Role.entity';
 import { Supplier } from './Entities/Supplier.entity';
 import { UserEntity } from './Entities/User.entity';
@@ -14,6 +15,7 @@ import { BatchModule } from './Modules/Batchs/BatchModule';
 import { EmailModule } from './Modules/Email/Email.Module';
 import { ProductModule } from './Modules/Products/ProductModule';
 import { PurchaseModule } from './Modules/Purchases/PurchaseModule';
+import { ReceiptModule } from './Modules/Receipts/ReceiptModule';
 import { SalesModule } from './Modules/Sales/SalesModule';
 import { SupplierModule } from './Modules/Suppliers/SupplierModule';
 import { UsersModule } from './Modules/Users/UsersModule';
@@ -27,6 +29,7 @@ import { UsersModule } from './Modules/Users/UsersModule';
     SalesModule,
     SupplierModule,
     EmailModule,
+    ReceiptModule,
     ConfigModule.forRoot(),
     TypeOrmModule.forRootAsync({
       useFactory: () => {
@@ -38,7 +41,7 @@ import { UsersModule } from './Modules/Users/UsersModule';
           password: process.env.DB_PASSWORD,
           database: process.env.DB_NAME,
           timezone: process.env.TIME_ZONE,
-          entities: [UserEntity, Profile, Product, Purchases, Sale, Role, Supplier, BatchNumbers], // Use the resolved path
+          entities: [UserEntity, Profile, Product, Purchases, Sale, Role, Supplier, BatchNumbers, Receipt], // Use the resolved path
           synchronize: true
         };
       }

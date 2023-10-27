@@ -1,12 +1,13 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { endOfDay, format, startOfDay, subDays } from 'date-fns';
 import { Sale } from "src/Entities/sales.entity";
 import { Pagination } from "src/helpers/Pagination";
 import { PaginationData, PaginationOptions } from "src/helpers/paginationOptions";
-import { EntityManager, Repository } from "typeorm";
+import { EntityManager, Raw, Repository } from "typeorm";
 import { ProductService } from "../Products/ProductService";
 import { PurchaseService } from "../Purchases/PurchaseService";
+import { ReceiptService } from "../Receipts/ReceiptService";
 @Injectable()
 export class SaleService {
     constructor(@InjectRepository(Sale)
@@ -14,57 +15,87 @@ export class SaleService {
         private productService: ProductService,
         private purchaseService: PurchaseService,
         private readonly entityManager: EntityManager,
+        private receiptService: ReceiptService,
+
     ) { }
+
     async createSale(data: any) {
         const queryRunner = this.entityManager.connection.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
         try {
             const entityManager = queryRunner.manager;
-            const { customer_name, userId, productId, price, total, quantity, amount, balance, editId } = data;
-            const productExists = await this.productService.productById(productId);
-            if (!productExists) {
-                throw new HttpException(`Product with ID ${productId} not found`, HttpStatus.NOT_FOUND);
+            const { customer_name, cart_items, grantTotal, totalItems, balance, amount } = data;
+            const results = [];
+            const items = Array.isArray(cart_items) ? cart_items : [cart_items];
+            const productQuantityChanges = new Map();
+            const receiptData = {
+                customer_name,
+                grantTotal,
+                totalItems,
+                balance,
+                amount
+            };
+            const receiptNumber = await this.receiptService.createReceipt(entityManager, receiptData);
+
+            await Promise.all(
+                items.map(async (item) => {
+                    item.customer_name = customer_name;
+                    const batchExists = await this.purchaseService.findOne(item.batchId);
+
+                    if (!batchExists || !batchExists.product) {
+                        results.push({ error: 'Batch not found' });
+                    } else {
+                        let quantityInStock = batchExists.purchase_Qty - batchExists.soldQty;
+
+                        if (quantityInStock < item.quantity) {
+                            results.push({ error: `Insufficient Quantity for ${batchExists.product.name}` });
+                        } else {
+                            let expectedSalePrice = batchExists.sale_Price * parseFloat(item.quantity);
+                            let balance = parseFloat(item.total) - expectedSalePrice;
+
+                            const newSale = this.salesRepository.create({
+                                price: item.price,
+                                total: item.total,
+                                quantity: item.quantity,
+                                amount: expectedSalePrice,
+                                user: item.userId,
+                                balance: balance,
+                                product: item.productId,
+                                receipt: receiptNumber,
+                                status: item.balance === '0' ? 'Paid' : 'Due',
+                            });
+
+                            await entityManager.save(newSale);
+
+                            const purchaseQtySold = Number(batchExists.soldQty) + Number(item.quantity);
+
+                            if (!productQuantityChanges.has(item.productId)) {
+                                productQuantityChanges.set(item.productId, 0);
+                            }
+                            productQuantityChanges.set(item.productId, productQuantityChanges.get(item.productId) - Number(item.quantity));
+
+                            await this.purchaseService.updatePurchaseQuantity(entityManager, item.batchId, purchaseQtySold);
+                            results.push({ message: `Sale record for product ${batchExists.product.name} created successfully!` });
+                        }
+                    }
+                })
+            );
+
+            for (const [productId, quantityChange] of productQuantityChanges) {
+                const productExists = await this.productService.productById(productId);
+                const newProductQty = Number(productExists.qty) + quantityChange;
+                await this.productService.updateProductQuantity(entityManager, productId, newProductQty);
             }
-            if (quantity <= productExists.qty) {
-                const purchaseExists = await this.purchaseService.findOne(editId);
-                const purchaseBalance = purchaseExists.purchase_Qty - purchaseExists.soldQty;
 
-                if (purchaseExists.purchase_Qty === purchaseExists.soldQty || quantity > purchaseBalance) {
-                    return { error: `Not enough quantity for ${productExists.name}` };
-                } else {
-                    const newSale = this.salesRepository.create({
-                        customer_name: customer_name,
-                        price: price,
-                        total: total,
-                        quantity: quantity,
-                        amount: amount,
-                        balance: balance,
-                        user: userId,
-                        product: productId,
-                        status: balance === '0.00' ? 'Paid' : 'Due'
-                    });
-                    await entityManager.save(newSale);
+            await queryRunner.commitTransaction();
+            const hasError = results.some((result) => result.error);
 
-                    const newProductQty = Number(productExists.qty) - Number(quantity);
-                    productExists.qty = newProductQty;
-
-                    await this.productService.updateProductQuantity(entityManager, productId, productExists.qty);
-                    const purchaseQtySold = Number(purchaseExists.soldQty) + Number(quantity);
-                    purchaseExists.soldQty = purchaseQtySold;
-
-                    await this.purchaseService.updatePurchaseQuantity(entityManager, editId, purchaseExists.soldQty);
-                    await queryRunner.commitTransaction();
-                    return { message: "Sale record created successfully!" }
-                }
-            } else {
-                return { error: `Insufficient quantity of product: ${productExists.name}`};
-            }
+            return { results, hasError };
         } catch (error) {
-            await queryRunner.rollbackTransaction()
-            return { error: `Error occured while creating sale ` }
-        }
-        finally {
+            await queryRunner.rollbackTransaction();
+            return { error: 'An unexpected error occurred while creating the sale.' };
+        } finally {
             await queryRunner.release();
         }
     }
@@ -145,7 +176,7 @@ export class SaleService {
             .addSelect('SUM(sale.total) AS TotalRevenue')
             .addSelect('SUM(sale.quantity) AS TotalQuantity')
             .addSelect('SUM(sale.amount) AS TotalAmount')
-            .addSelect('SUM(sale.balance) AS TotalBalance')
+            // .addSelect('SUM(sale.balance) AS TotalBalance')
             .innerJoin('sale.product', 'product')
             .where(`DATE(sale.sell_date) BETWEEN :startDate AND :endDate`, {
                 startDate: startDateFormatted,
@@ -191,7 +222,6 @@ export class SaleService {
         const endOfToday = endOfDay(today);
         const startDateFormatted = format(startOfToday, 'yyyy-MM-dd 00:00:00');
         const endtoday = format(endOfToday, 'yyyy-MM-dd 23:59:59');
-
         // Fetch sales records for today using a date range query
         const todaysales = await this.salesRepository
             .createQueryBuilder('sale')
@@ -205,7 +235,6 @@ export class SaleService {
 
         // Calculate total sales for today and group them by product name
         const productMap = new Map<string, number>();
-
         todaysales.forEach((sale) => {
             const productName = sale.product.name;
             const total = Number(sale.total);
@@ -239,6 +268,21 @@ export class SaleService {
             TotalRevenue: totalSumAll,
         };
     }
-
+    async test(productName: string, date: any) {
+        const formattedDate = date.replace(/\//g, '-');
+        console.log(formattedDate)
+        const selection = await this.salesRepository.find({
+            relations: {
+                product: true
+            },
+            where: {
+                product: {
+                    name: `${productName}`
+                },
+                sell_date: Raw(alias => `DATE(${alias}) = DATE('${formattedDate}')`),
+            },
+        })
+        return selection
+    }
 
 }

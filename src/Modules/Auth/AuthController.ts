@@ -26,6 +26,10 @@ export class AuthController {
 			return {
 				id: req.user.id,
 				email: req.user.email,
+				username: req.user.username,
+				userId: req.user.userId,
+				phone: req.user.phone,
+				role: req.user.role
 			}
 		}
 		return {

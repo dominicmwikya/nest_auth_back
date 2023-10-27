@@ -1,13 +1,14 @@
 import { Module } from "@nestjs/common";
-import { SaleService } from "./SalesService";
-import { SalesController } from "./SalesController";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Sale } from "src/Entities/sales.entity";
 import { ProductModule } from "../Products/ProductModule";
 import { PurchaseModule } from "../Purchases/PurchaseModule";
+import { ReceiptModule } from "../Receipts/ReceiptModule";
+import { SalesController } from "./SalesController";
+import { SaleService } from "./SalesService";
 
 @Module({
-    imports: [ProductModule, PurchaseModule, TypeOrmModule.forFeature([Sale])],
+    imports: [ProductModule, ReceiptModule, PurchaseModule, TypeOrmModule.forFeature([Sale])],
     controllers: [SalesController],
     providers: [SaleService],
     exports: [SaleService],

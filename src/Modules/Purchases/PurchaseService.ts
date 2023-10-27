@@ -10,10 +10,11 @@ export class PurchaseService {
 	constructor(@InjectRepository(Purchases)
 	private purchaseRepository: Repository<Purchases>,
 		private batchService: BatchService,
+		// private  productService: ProductService,
 		@InjectRepository(Product) private productRepository: Repository<Product>
 	) { }
 
-	async CreatePurchase(product: Product, user: UserEntity, sprice: number, price: number, quantity: number) {
+	async CreatePurchase(product: Product, user: UserEntity, price: number, quantity: number, sprice: number,) {
 		const batchNumber = await this.batchService.generateBatchNumber();
 		const newPurchase = this.purchaseRepository.create({
 			product,
@@ -100,6 +101,24 @@ export class PurchaseService {
 		}
 	}
 
+	async testDeletePurchase(id: any) {
+		const purchase = await this.purchaseRepository.findOne({ where: { id: id, flag: 0 }, relations: ['product'] });
+		const product = purchase.product;
+		product.qty -= purchase.purchase_Qty;
+		const updateProductQty = await this.productRepository.update({ id: product.id }, { qty: product.qty });
+		if (updateProductQty.affected === 1) {
+			const updatePurchaseFlag = await this.deletePurchase(id);
+			if (updatePurchaseFlag.message) {
+				return { message: updatePurchaseFlag.message }
+			}
+			if (updatePurchaseFlag.error) {
+				return { error: updatePurchaseFlag.error }
+			}
+		}
+		else {
+			return { error: `Error Occured while update product qty of ${id} Try again` }
+		}
+	}
 	async deletePurchase(id: number): Promise<any> {
 		try {
 			const update = await this.findOne(id);
@@ -117,6 +136,7 @@ export class PurchaseService {
 			return { error: `Error occured while deleting  id ${id}: ${error.message}` };
 		}
 	}
+
 
 	async deletePurchaseByProductId(productId: number): Promise<boolean> {
 		try {
@@ -143,7 +163,7 @@ export class PurchaseService {
 		const response = await this.fetchFilterData(searchParam);
 
 		if (response.length === 0) {
-			throw new HttpException({ error: `Error occurred while updating qty` },
+			throw new HttpException({ error: `No matching item Found` },
 				HttpStatus.NOT_FOUND);
 		}
 		const mappedData = response.map((purchase) => {
@@ -160,7 +180,6 @@ export class PurchaseService {
 			};
 		})
 		const filteredData = mappedData.filter((item) => item.stock > 0);
-
 		return filteredData;
 	}
 
@@ -169,10 +188,38 @@ export class PurchaseService {
 		const response = await this.purchaseRepository.find({
 			where: {
 				batchcode: ILike(`%${searchValue}%`),
-
 			},
 			relations: ['product']
 		});
 		return response;
 	}
+
+	async fetchFastSellingBatches() {
+		const response = await this.purchaseRepository
+			.createQueryBuilder('fastsales')
+			.leftJoinAndSelect('fastsales.product', 'product')
+			.where('fastsales.soldQty < fastsales.purchase_Qty && fastsales.soldQty > 0')
+			.andWhere('fastsales.flag = 0')
+			.orderBy('fastsales.soldQty', 'DESC')
+			.take(5)
+			.getMany();
+
+		const result = response.map((resp) => {
+			const stock = Number(resp.purchase_Qty) - Number(resp.soldQty);
+			return {
+				id: resp.id,
+				name: resp.product.name,
+				batchNumber: resp.batchcode,
+				stock: stock,
+				soldQty:resp.soldQty,
+				sellingPrice: resp.sale_Price,
+				buyPrice: resp.purchase_Price,
+				user: resp.user,
+				product: resp.product
+			}
+		});
+		return result;
+	}
+
+
 }

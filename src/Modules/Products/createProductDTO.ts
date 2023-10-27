@@ -7,6 +7,7 @@ export class ProductInterface {
   category: string;
   min_qty: number;
   qty: number;
+  description:string;
   users: UserEntity;
 
 }
@@ -17,9 +18,11 @@ export class createProductDTO {
   @IsString()
   name: string;
 
-  description: string;
   @IsString()
   sku: string;
+
+  @IsString()
+  description: string;
 
   category: string;
 
@@ -28,4 +31,5 @@ export class createProductDTO {
 
   qty: number;
 
+  
 }

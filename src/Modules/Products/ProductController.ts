@@ -11,7 +11,7 @@ export class ProductController {
 	constructor(private productService: ProductService) { }
 
 	@UseGuards(AuthGuard)
-	@Roles('DEFAULT USER', 'Admin')
+	@Roles('DEFAULT USER', 'Admin1', 'Admin')
 	@Get()
 	async getProducts() {
 		const result = await this.productService.findAll();
@@ -37,7 +37,7 @@ export class ProductController {
 		}
 	}
 
-	@Roles('DEFAULT USER', 'Admin')
+	@Roles('DEFAULT USER', 'Admin1', 'Admin')
 	@Delete('/remove')
 	async productDelete(@Body() body: { ids: number[] | number }) {
 		try {
@@ -59,7 +59,6 @@ export class ProductController {
 					error: "Some products could not be deleted"
 				};
 			}
-
 		} catch (error) {
 			return {
 				error: error
@@ -67,7 +66,7 @@ export class ProductController {
 		}
 	}
 
-	@Roles('DEFAULT USER', 'Admin1')
+	@Roles('DEFAULT USER', 'Admin1', 'Admin')
 	@Put('/:id')
 	async updateProduct(@Param('id') id: number, @Body() data: Product) {
 		try {
@@ -84,4 +83,7 @@ export class ProductController {
 			}
 		}
 	}
+
+
+	
 }

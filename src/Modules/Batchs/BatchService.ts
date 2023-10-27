@@ -9,9 +9,9 @@ export class BatchService {
     async generateBatchNumber() {
         const newBatch = await this.batchRepository.save({});
         const currentDate = new Date();
-        const formattedDate = format(currentDate, "yyyyMMdd");
+        const formattedDate = format(currentDate, "yyMMdd");
         const batchId = newBatch.id;
-        const bactNumber = `BATCH${formattedDate}${batchId}`;
+        const bactNumber = `B${formattedDate}${batchId}`;
         return bactNumber;
     }
 }
